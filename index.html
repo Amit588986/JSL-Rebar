@@ -485,7 +485,7 @@ function renderOrders(){
       </div>
       ${orders.length===0 ? `<div class="empty">No orders yet.</div>` :
       `<table>
-        <thead><tr><th>Order ID</th><th>Customer</th><th>Lines</th><th>Total Qty</th><th>Date</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Order ID</th><th>Customer</th><th>Lines</th><th>Total Qty</th><th>Date</th><th>Status</th><th></th><th></th></tr></thead>
         <tbody>
         ${sorted.map(o=>{
           const st = orderStatus(o);
@@ -498,6 +498,7 @@ function renderOrders(){
             <td>${o.date}</td>
             <td><span class="pill ${st}">${st}</span></td>
             <td>${st!=='fulfilled' ? `<button class="btn secondary small" data-fulfill="${o.id}">Try Fulfill</button>` : ''}</td>
+            <td><button class="btn danger small" data-delete-order="${o.id}">Delete</button></td>
           </tr>`;}).join('')}
         </tbody>
       </table>`}
@@ -511,6 +512,9 @@ function renderOrders(){
   document.getElementById('placeOrderBtn').addEventListener('click', placeOrder);
   document.querySelectorAll('[data-fulfill]').forEach(b=>{
     b.addEventListener('click', ()=>tryFulfillOrder(b.dataset.fulfill));
+  });
+  document.querySelectorAll('[data-delete-order]').forEach(b=>{
+    b.addEventListener('click', ()=>deleteOrder(b.dataset.deleteOrder));
   });
 
   const dz = document.getElementById('orderDropzone');
@@ -575,6 +579,21 @@ function tryFulfillOrder(id){
   o.items.forEach(it=>{ if(it.status!=='fulfilled' && fulfillItem(it)) changed++; });
   if(changed>0){ toast(`${id}: ${changed} line(s) fulfilled from stock.`); }
   else { toast(`${id}: still short on stock for remaining line(s).`); }
+  render();
+}
+
+function deleteOrder(id){
+  const o = orders.find(x=>x.id===id);
+  if(!o) return;
+  if(!confirm(`Delete order ${id} for ${o.customer}? Fulfilled lines will be returned to stock.`)) return;
+  o.items.forEach(it=>{
+    if(it.status==='fulfilled'){
+      const s = findStock(it.dia, it.grade);
+      if(s) s.qty += it.qty;
+    }
+  });
+  orders = orders.filter(x=>x.id!==id);
+  toast(`${id} deleted.`);
   render();
 }
 
@@ -719,7 +738,7 @@ function renderStock(){
         <div class="card-title">Inventory by Line <span class="count">${stock.length} lines</span></div>
       </div>
       <table>
-        <thead><tr><th>Diameter</th><th>Grade</th><th>In Stock</th><th>Reorder Level</th><th>Fill</th><th>Pending Demand</th><th>Status</th></tr></thead>
+        <thead><tr><th>Diameter</th><th>Grade</th><th>In Stock</th><th>Reorder Level</th><th>Fill</th><th>Pending Demand</th><th>Status</th><th></th></tr></thead>
         <tbody>
         ${sorted.map(s=>{
           const status = stockStatus(s);
@@ -739,6 +758,7 @@ function renderStock(){
             </td>
             <td>${demand>0 ? fmt(demand)+' MT' : '—'}</td>
             <td><span class="pill ${status}">${status==='ok'?'Healthy':status==='low'?'Low':'Critical'}</span></td>
+            <td><button class="btn danger small" data-delete-stock="${s.dia}|${s.grade}">Delete</button></td>
           </tr>`;
         }).join('')}
         </tbody>
@@ -746,6 +766,12 @@ function renderStock(){
     </div>
   `;
   document.getElementById('receiveBtn').addEventListener('click', receiveStock);
+  document.querySelectorAll('[data-delete-stock]').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const [dia,grade] = b.dataset.deleteStock.split('|');
+      deleteStockLine(Number(dia), grade);
+    });
+  });
 
   const dz = document.getElementById('dropzone');
   const fileInput = document.getElementById('fileInput');
@@ -880,6 +906,17 @@ function receiveStock(){
   }
   s.qty += qty;
   toast(`Added ${fmt(qty)} MT to ⌀${dia}mm ${grade} stock.`);
+  render();
+}
+
+function deleteStockLine(dia, grade){
+  const s = findStock(dia, grade);
+  if(!s) return;
+  const demand = pendingDemandFor(dia, grade);
+  const warn = demand>0 ? ` There is ${fmt(demand)} MT of unfulfilled order demand for this line.` : '';
+  if(!confirm(`Delete ⌀${dia}mm ${grade} stock line (${fmt(s.qty)} MT)?${warn}`)) return;
+  stock = stock.filter(x=>!(x.dia===dia && x.grade===grade));
+  toast(`⌀${dia}mm ${grade} stock line deleted.`);
   render();
 }
 
