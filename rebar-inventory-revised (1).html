@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Jindal Stainless Limited — TMT Rebar Inventory & Order Control</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#15171a;
+    --surface:#1f2226;
+    --surface2:#282c31;
+    --surface3:#32373d;
+    --accent:#e8590c;
+    --accent-dim:#7a3210;
+    --amber:#f5a623;
+    --text:#e9e7e2;
+    --text-dim:#9098a1;
+    --text-faint:#5d646d;
+    --success:#5fb878;
+    --danger:#e5484d;
+    --border:#383d44;
+    --font-display:'Oswald',sans-serif;
+    --font-body:'Inter',sans-serif;
+    --font-mono:'IBM Plex Mono',monospace;
+  }
+  html[data-theme="light"]{
+    --bg:#f4f3f1;
+    --surface:#ffffff;
+    --surface2:#eeece8;
+    --surface3:#e3e0da;
+    --accent:#d65a0f;
+    --accent-dim:#fbe3d2;
+    --amber:#b9740f;
+    --text:#1f2226;
+    --text-dim:#5d646d;
+    --text-faint:#8a9099;
+    --success:#2f8a52;
+    --danger:#c9343a;
+    --border:#dcd9d3;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--font-body);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+    transition:background .2s,color .2s;
+  }
+  ::selection{background:var(--accent);color:#fff;}
+
+  /* ===== Layout ===== */
+  .app{display:grid;grid-template-columns:230px 1fr;min-height:100vh;}
+  @media (max-width:860px){.app{grid-template-columns:1fr;}}
+
+  /* ===== Sidebar ===== */
+  .sidebar{
+    background:var(--surface);
+    border-right:1px solid var(--border);
+    padding:24px 16px;
+    display:flex;flex-direction:column;
+    position:sticky;top:0;height:100vh;
+  }
+  @media (max-width:860px){.sidebar{position:relative;height:auto;flex-direction:row;align-items:center;overflow-x:auto;padding:14px 16px;gap:8px;}}
+  .brand{
+    font-family:var(--font-display);
+    font-size:20px;font-weight:700;letter-spacing:0.5px;
+    color:var(--text);margin-bottom:4px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .brand .mark{
+    width:30px;height:30px;flex:none;
+  }
+  .brand-sub{
+    font-family:var(--font-mono);
+    font-size:10px;color:var(--text-faint);
+    letter-spacing:1.5px;text-transform:uppercase;
+    margin-bottom:28px;
+  }
+  @media (max-width:860px){.brand-sub{display:none;} .brand{margin-bottom:0;margin-right:10px;}}
+  .nav{display:flex;flex-direction:column;gap:2px;}
+  @media (max-width:860px){.nav{flex-direction:row;}}
+  .nav button{
+    all:unset;cursor:pointer;
+    display:flex;align-items:center;gap:10px;
+    padding:10px 12px;border-radius:6px;
+    font-family:var(--font-body);font-size:13.5px;font-weight:600;
+    color:var(--text-dim);white-space:nowrap;
+    transition:background .15s,color .15s;
+  }
+  .nav button:hover{background:var(--surface2);color:var(--text);}
+  .nav button.active{background:var(--accent-dim);color:var(--amber);}
+  .nav button .dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex:none;}
+  .sidebar-foot{margin-top:auto;font-family:var(--font-mono);font-size:10px;color:var(--text-faint);line-height:1.6;}
+  @media (max-width:860px){.sidebar-foot{display:none;}}
+
+  /* ===== Main ===== */
+  .main{padding:28px 36px 60px;max-width:1300px;}
+  @media (max-width:600px){.main{padding:18px 16px 40px;}}
+  .page-head{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:26px;}
+  .page-title{font-family:var(--font-display);font-size:30px;font-weight:600;letter-spacing:0.3px;}
+  .page-desc{color:var(--text-dim);font-size:13.5px;margin-top:4px;}
+
+  .btn{
+    all:unset;cursor:pointer;
+    font-family:var(--font-body);font-weight:600;font-size:13px;
+    padding:10px 18px;border-radius:6px;
+    background:var(--accent);color:#fff;
+    transition:filter .15s, transform .1s;
+  }
+  .btn:hover{filter:brightness(1.12);}
+  .btn:active{transform:scale(0.97);}
+  .btn.secondary{background:var(--surface3);color:var(--text);}
+  .btn.danger{background:transparent;color:var(--danger);border:1px solid var(--danger);}
+  .btn.small{padding:6px 12px;font-size:12px;}
+
+  /* ===== Stat cards ===== */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:32px;}
+  @media (max-width:860px){.stats{grid-template-columns:repeat(2,1fr);}}
+  @media (max-width:480px){.stats{grid-template-columns:1fr;}}
+  .stat{
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:10px;padding:18px 18px 16px;
+    position:relative;overflow:hidden;
+  }
+  .stat::before{
+    content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--bar);
+  }
+  .stat .label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-faint);font-weight:600;}
+  .stat .value{font-family:var(--font-display);font-size:30px;margin-top:6px;font-weight:600;}
+  .stat .sub{font-size:11.5px;color:var(--text-dim);margin-top:4px;font-family:var(--font-mono);}
+
+  /* ===== Sections / cards ===== */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:22px;margin-bottom:24px;}
+  .card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+  .card-title{font-family:var(--font-display);font-size:17px;font-weight:600;letter-spacing:0.3px;}
+  .card-title .count{color:var(--text-faint);font-family:var(--font-mono);font-size:12px;margin-left:8px;}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{
+    text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:0.8px;
+    color:var(--text-faint);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--border);
+  }
+  td{padding:10px 10px;border-bottom:1px solid var(--surface2);font-family:var(--font-mono);font-size:12.5px;vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  tr:hover td{background:var(--surface2);}
+  td.name{font-family:var(--font-body);font-weight:500;}
+
+  .pill{
+    display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;
+    font-family:var(--font-body);letter-spacing:0.2px;
+  }
+  .pill.ok{background:rgba(95,184,120,.15);color:var(--success);}
+  .pill.low{background:rgba(245,166,35,.15);color:var(--amber);}
+  .pill.crit{background:rgba(229,72,77,.15);color:var(--danger);}
+  .pill.pending{background:rgba(245,166,35,.15);color:var(--amber);}
+  .pill.fulfilled{background:rgba(95,184,120,.15);color:var(--success);}
+  .pill.partial{background:rgba(232,89,12,.15);color:var(--accent);}
+
+  /* stock gauge bars - signature element */
+  .gauge-wrap{display:flex;align-items:center;gap:8px;}
+  .gauge{width:80px;height:8px;background:var(--surface3);border-radius:4px;overflow:hidden;flex:none;}
+  .gauge-fill{height:100%;border-radius:4px;}
+  .gauge-pct{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);width:34px;}
+
+  /* rebar stack visual for dashboard */
+  .rebar-yard{display:flex;align-items:flex-end;gap:14px;height:160px;padding:10px 6px 0;overflow-x:auto;}
+  .rebar-col{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:46px;flex:none;}
+  .rebar-stack{display:flex;flex-direction:column-reverse;gap:3px;align-items:center;height:120px;justify-content:flex-start;}
+  .rebar-rod{border-radius:3px;background:linear-gradient(90deg,#8a5a2e,#c98a44 50%,#8a5a2e);box-shadow:inset 0 1px 1px rgba(255,255,255,.25);}
+  .rebar-label{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);}
+  .rebar-qty{font-family:var(--font-mono);font-size:10px;color:var(--text-faint);}
+
+  /* form */
+  .form-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+  @media (max-width:760px){.form-grid{grid-template-columns:repeat(2,1fr);}}
+  @media (max-width:460px){.form-grid{grid-template-columns:1fr;}}
+  label{font-size:11px;color:var(--text-faint);font-weight:600;text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:5px;}
+  input,select{
+    width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);
+    padding:9px 10px;border-radius:6px;font-family:var(--font-mono);font-size:12.5px;
+  }
+  input:focus,select:focus{outline:none;border-color:var(--accent);}
+  .field{margin-bottom:0;}
+
+  .empty{padding:30px;text-align:center;color:var(--text-faint);font-size:13px;}
+  .empty b{color:var(--text-dim);}
+
+  .upload-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .dropzone{
+    flex:1;min-width:240px;
+    border:1.5px dashed var(--border);border-radius:8px;
+    padding:18px 16px;text-align:center;cursor:pointer;
+    transition:border-color .15s, background .15s;
+    font-size:12.5px;color:var(--text-dim);
+  }
+  .dropzone:hover, .dropzone.drag{border-color:var(--accent);background:rgba(232,89,12,.06);}
+  .dropzone b{color:var(--text);}
+  .dropzone .sub{font-family:var(--font-mono);font-size:11px;color:var(--text-faint);margin-top:4px;}
+  .upload-summary{font-family:var(--font-mono);font-size:12px;color:var(--text-dim);margin-top:12px;line-height:1.7;}
+  .upload-summary .new{color:var(--success);}
+  .upload-summary .upd{color:var(--amber);}
+  .upload-summary .err{color:var(--danger);}
+
+  .toast{
+    position:fixed;bottom:24px;right:24px;background:var(--surface3);border:1px solid var(--border);
+    border-left:3px solid var(--accent);padding:14px 18px;border-radius:8px;font-size:13px;
+    max-width:320px;box-shadow:0 8px 24px rgba(0,0,0,.4);
+    animation:slidein .25s ease, fadeout .4s ease 2.6s forwards;
+    z-index:999;
+  }
+  @keyframes slidein{from{transform:translateX(30px);opacity:0;}to{transform:translateX(0);opacity:1;}}
+  @keyframes fadeout{to{opacity:0;transform:translateY(6px);}}
+
+  .section-note{font-size:12px;color:var(--text-faint);margin-top:10px;font-family:var(--font-mono);}
+
+  ::-webkit-scrollbar{height:8px;width:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:4px;}
+
+  .radio-opt{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-dim);font-weight:500;text-transform:none;letter-spacing:0;cursor:pointer;}
+  .radio-opt input{width:auto;accent-color:var(--accent);cursor:pointer;}
+  .reset-link{color:var(--text-faint);text-decoration:underline;margin-top:4px;display:inline-block;}
+  .reset-link:hover{color:var(--danger);}
+
+  .theme-toggle{
+    all:unset;cursor:pointer;
+    display:flex;align-items:center;gap:8px;
+    margin-top:14px;padding:8px 12px;border-radius:6px;
+    border:1px solid var(--border);background:var(--surface2);
+    color:var(--text-dim);font-family:var(--font-body);font-weight:600;font-size:12px;
+    transition:background .15s,color .15s;
+  }
+  .theme-toggle:hover{background:var(--surface3);color:var(--text);}
+  @media (max-width:860px){.theme-toggle{margin-top:0;}}
+
+  /* ===== Modal ===== */
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,.55);
+    display:none;align-items:center;justify-content:center;
+    z-index:1000;padding:20px;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal{
+    background:var(--surface);border:1px solid var(--border);border-radius:10px;
+    padding:24px;max-width:560px;width:100%;max-height:85vh;overflow-y:auto;
+    box-shadow:0 16px 48px rgba(0,0,0,.45);
+  }
+  .modal-title{font-family:var(--font-display);font-size:18px;font-weight:600;margin-bottom:18px;letter-spacing:0.3px;}
+  .modal-actions{display:flex;gap:10px;margin-top:18px;justify-content:flex-end;}
+  .modal table{margin-bottom:4px;}
+  .modal td, .modal th{padding:7px 8px;}
+  .btn.tiny{padding:4px 9px;font-size:11px;}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 30 30"><rect x="2" y="13" width="26" height="4" rx="2" fill="#e8590c"/><circle cx="6" cy="15" r="4.5" fill="#f5a623"/><circle cx="24" cy="15" r="4.5" fill="#f5a623"/></svg>
+      JINDAL STAINLESS LIMITED
+    </div>
+    <div class="brand-sub">Inventory · Orders · Mill Plan</div>
+    <nav class="nav" id="nav"></nav>
+    <button class="theme-toggle" id="themeToggle" type="button"></button>
+    <div class="sidebar-foot">
+      Stock unit: Metric Tons (MT)<br>
+      Grades: SS-500 / SS-600 / SS-550<br>
+      Autosaved to this browser
+      <div><a href="#" id="resetDataLink" class="reset-link">Reset to sample data</a></div>
+    </div>
+  </aside>
+
+  <main class="main" id="main"></main>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modalBox"></div>
+</div>
+
+<script>
+/* ============== DATA MODEL ============== */
+const DIAMETERS = [8,10,12,16,20,25,32];
+const GRADES = ['SS-500','SS-600','SS-550'];
+const STORAGE_KEY = 'rebar-inventory-data-v1';
+
+const DEFAULT_STOCK = [
+  {dia:8,  grade:'SS-500',  qty:18.5, reorder:25, capacity:60},
+  {dia:8,  grade:'SS-600', qty:6.2,  reorder:15, capacity:40},
+  {dia:10, grade:'SS-500',  qty:42.0, reorder:30, capacity:70},
+  {dia:10, grade:'SS-600', qty:11.0, reorder:20, capacity:50},
+  {dia:12, grade:'SS-500',  qty:55.4, reorder:35, capacity:90},
+  {dia:12, grade:'SS-550',  qty:9.8,  reorder:20, capacity:50},
+  {dia:16, grade:'SS-500',  qty:28.0, reorder:35, capacity:80},
+  {dia:16, grade:'SS-600', qty:4.5,  reorder:18, capacity:45},
+  {dia:20, grade:'SS-500',  qty:33.6, reorder:30, capacity:75},
+  {dia:25, grade:'SS-500',  qty:12.2, reorder:25, capacity:60},
+  {dia:25, grade:'SS-550',  qty:3.0,  reorder:12, capacity:30},
+  {dia:32, grade:'SS-500',  qty:5.4,  reorder:15, capacity:40},
+];
+
+const DEFAULT_ORDERS = [
+  {id:'ORD-1001', customer:'Shree Balaji Constructions', date:'2026-06-24',
+    items:[ {dia:12, grade:'SS-500', qty:20, allocated:20, status:'fulfilled'}, {dia:16, grade:'SS-600', qty:5, allocated:5, status:'fulfilled'} ]},
+  {id:'ORD-1002', customer:'Vihaan Infra Pvt Ltd', date:'2026-06-26',
+    items:[ {dia:25, grade:'SS-500', qty:18, allocated:0, status:'pending'}, {dia:8, grade:'SS-500', qty:6, allocated:0, status:'pending'} ]},
+  {id:'ORD-1003', customer:'NorthGate Builders', date:'2026-06-27',
+    items:[ {dia:8, grade:'SS-600', qty:9, allocated:0, status:'pending'} ]},
+  {id:'ORD-1004', customer:'Om Sai Developers', date:'2026-06-28',
+    items:[ {dia:32, grade:'SS-500', qty:7, allocated:0, status:'pending'}, {dia:20, grade:'SS-500', qty:4, allocated:0, status:'pending'} ]},
+];
+
+const DEFAULT_ORDER_SEQ = 1005;
+
+let stock, orders, orderSeq;
+const persisted = loadData();
+if(persisted){
+  stock = persisted.stock;
+  orders = persisted.orders;
+  orderSeq = persisted.orderSeq;
+} else {
+  stock = JSON.parse(JSON.stringify(DEFAULT_STOCK));
+  orders = JSON.parse(JSON.stringify(DEFAULT_ORDERS));
+  orderSeq = DEFAULT_ORDER_SEQ;
+}
+
+let activeTab = 'dashboard';
+
+/* ============== PERSISTENCE ============== */
+function loadData(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return null;
+    const parsed = JSON.parse(raw);
+    if(!parsed || !Array.isArray(parsed.stock) || !Array.isArray(parsed.orders)) return null;
+    return parsed;
+  }catch(err){
+    console.error('Could not load saved inventory data:', err);
+    return null;
+  }
+}
+function saveData(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({stock, orders, orderSeq}));
+  }catch(err){
+    console.error('Could not save inventory data:', err);
+    toast('Warning: changes could not be saved to this browser.');
+  }
+}
+function resetToSampleData(){
+  if(!confirm('Reset everything to the original sample data? All your stock and order changes will be lost.')) return;
+  stock = JSON.parse(JSON.stringify(DEFAULT_STOCK));
+  orders = JSON.parse(JSON.stringify(DEFAULT_ORDERS));
+  orderSeq = DEFAULT_ORDER_SEQ;
+  saveData();
+  toast('Reset to sample data.');
+  render();
+}
+
+/* ============== THEME ============== */
+function initTheme(){
+  const saved = localStorage.getItem('rebar-theme');
+  const theme = saved === 'light' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', theme);
+  updateThemeToggleLabel();
+}
+function toggleTheme(){
+  const current = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+  const next = current === 'light' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('rebar-theme', next);
+  updateThemeToggleLabel();
+}
+function updateThemeToggleLabel(){
+  const btn = document.getElementById('themeToggle');
+  if(!btn) return;
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  btn.textContent = isLight ? '🌙  Dark Mode' : '☀️  Light Mode';
+}
+initTheme();
+document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+document.getElementById('resetDataLink').addEventListener('click', (e)=>{ e.preventDefault(); resetToSampleData(); });
+let orderCart = []; // line items being built for a new order
+
+/* ============== HELPERS ============== */
+function findStock(dia,grade){ return stock.find(s=>s.dia===dia && s.grade===grade); }
+function stockStatus(s){
+  const pct = s.qty/s.reorder;
+  if(s.qty <= 0) return 'crit';
+  if(pct < 1) return 'low';
+  return 'ok';
+}
+function fmt(n){ return Number(n).toFixed(1); }
+function toast(msg){
+  const t = document.createElement('div');
+  t.className='toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 3000);
+}
+
+/* ============== MODAL ============== */
+let editOrderDraft = null;
+function showModal(){ document.getElementById('modalOverlay').classList.add('open'); }
+function closeModal(){
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.getElementById('modalBox').innerHTML = '';
+  editOrderDraft = null;
+}
+document.getElementById('modalOverlay').addEventListener('click', (e)=>{
+  if(e.target.id==='modalOverlay') closeModal();
+});
+document.addEventListener('keydown', (e)=>{
+  if(e.key==='Escape') closeModal();
+});
+function manufacturingNeeds(){
+  return stock
+    .map(s=>({...s, deficit: Math.max(0, s.reorder - s.qty)}))
+    .filter(s=>s.deficit > 0)
+    .sort((a,b)=>b.deficit - a.deficit);
+}
+function pendingDemandFor(dia,grade){
+  let total = 0;
+  orders.forEach(o=> o.items.forEach(it=>{
+    if(it.dia===dia && it.grade===grade && it.status!=='fulfilled') total += (it.qty - (it.allocated||0));
+  }));
+  return total;
+}
+function orderStatus(o){
+  const statuses = o.items.map(it=>it.status);
+  if(statuses.every(s=>s==='fulfilled')) return 'fulfilled';
+  if(statuses.every(s=>s==='pending')) return 'pending';
+  return 'partial';
+}
+function orderTotalQty(o){ return o.items.reduce((a,it)=>a+it.qty,0); }
+
+/* ============== NAV ============== */
+const TABS = [
+  {id:'dashboard', label:'Dashboard'},
+  {id:'orders', label:'Orders'},
+  {id:'stock', label:'Stock Yard'},
+  {id:'manufacture', label:'Manufacturing Plan'},
+];
+function renderNav(){
+  const nav = document.getElementById('nav');
+  nav.innerHTML = TABS.map(t=>`
+    <button class="${t.id===activeTab?'active':''}" data-tab="${t.id}">
+      <span class="dot"></span>${t.label}
+    </button>`).join('');
+  nav.querySelectorAll('button').forEach(b=>{
+    b.addEventListener('click', ()=>{ activeTab=b.dataset.tab; render(); });
+  });
+}
+
+/* ============== RENDER: DASHBOARD ============== */
+function renderDashboard(){
+  const totalStock = stock.reduce((a,s)=>a+s.qty,0);
+  const lowCount = stock.filter(s=>stockStatus(s)!=='ok').length;
+  const pendingOrders = orders.filter(o=>orderStatus(o)!=='fulfilled').length;
+  const mfgNeeds = manufacturingNeeds();
+  const totalDeficit = mfgNeeds.reduce((a,s)=>a+s.deficit,0);
+
+  const maxQty = Math.max(...stock.map(s=>s.capacity));
+  const byDia = DIAMETERS.map(d=>{
+    const rows = stock.filter(s=>s.dia===d);
+    const total = rows.reduce((a,s)=>a+s.qty,0);
+    const cap = rows.reduce((a,s)=>a+s.capacity,0);
+    return {dia:d, total, cap, status: rows.some(r=>stockStatus(r)!=='ok') ? (rows.some(r=>stockStatus(r)==='crit')?'crit':'low') : 'ok'};
+  });
+
+  const statusColor = {ok:'var(--success)', low:'var(--amber)', crit:'var(--danger)'};
+
+  document.getElementById('main').innerHTML = `
+    <div class="page-head">
+      <div>
+        <div class="page-title">Yard Overview</div>
+        <div class="page-desc">Live snapshot of rebar stock, demand and mill requirements</div>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat" style="--bar:var(--accent)">
+        <div class="label">Total Stock</div>
+        <div class="value">${fmt(totalStock)} MT</div>
+        <div class="sub">across ${stock.length} dia/grade lines</div>
+      </div>
+      <div class="stat" style="--bar:var(--amber)">
+        <div class="label">Below Reorder Level</div>
+        <div class="value">${lowCount}</div>
+        <div class="sub">lines need attention</div>
+      </div>
+      <div class="stat" style="--bar:var(--accent)">
+        <div class="label">Pending Orders</div>
+        <div class="value">${pendingOrders}</div>
+        <div class="sub">awaiting dispatch</div>
+      </div>
+      <div class="stat" style="--bar:var(--danger)">
+        <div class="label">Manufacturing Deficit</div>
+        <div class="value">${fmt(totalDeficit)} MT</div>
+        <div class="sub">${mfgNeeds.length} dia size${mfgNeeds.length===1?'':'s'} to roll</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Stock Yard by Diameter <span class="count">visual stack, height = fill vs capacity</span></div>
+      </div>
+      <div class="rebar-yard">
+        ${byDia.map(d=>{
+          const pct = Math.max(0.04, d.total/d.cap);
+          const rodCount = Math.max(1, Math.round(pct*10));
+          const rodWidth = 18 + d.dia*0.6;
+          let rods='';
+          for(let i=0;i<rodCount;i++){
+            rods += `<div class="rebar-rod" style="width:${rodWidth}px;height:7px;"></div>`;
+          }
+          return `<div class="rebar-col">
+            <div class="rebar-stack">${rods}</div>
+            <div class="rebar-label" style="color:${statusColor[d.status]}">⌀${d.dia}mm</div>
+            <div class="rebar-qty">${fmt(d.total)}/${d.cap} MT</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="section-note">Bar height reflects current stock as a share of yard capacity for that diameter, combined across all grades.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Top Manufacturing Priorities <span class="count">${mfgNeeds.length} item(s)</span></div>
+        <button class="btn secondary small" data-goto="manufacture">View full plan →</button>
+      </div>
+      ${mfgNeeds.length===0 ? `<div class="empty">All dia/grade lines are at or above reorder level. <b>No manufacturing required.</b></div>` :
+      `<table>
+        <thead><tr><th>Diameter</th><th>Grade</th><th>Current</th><th>Reorder Level</th><th>Deficit</th><th></th></tr></thead>
+        <tbody>
+        ${mfgNeeds.slice(0,5).map(s=>`
+          <tr>
+            <td class="name">⌀${s.dia}mm</td>
+            <td>${s.grade}</td>
+            <td>${fmt(s.qty)} MT</td>
+            <td>${fmt(s.reorder)} MT</td>
+            <td><span class="pill ${stockStatus(s)}">${fmt(s.deficit)} MT short</span></td>
+            <td></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`}
+    </div>
+  `;
+  document.querySelectorAll('[data-goto]').forEach(b=>b.addEventListener('click',()=>{activeTab=b.dataset.goto;render();}));
+}
+
+/* ============== RENDER: ORDERS ============== */
+function renderOrders(){
+  const sorted = [...orders].sort((a,b)=>{
+    const sa = orderStatus(a), sb = orderStatus(b);
+    const rank = {pending:0, partial:1, fulfilled:2};
+    return rank[sa]-rank[sb];
+  });
+
+  document.getElementById('main').innerHTML = `
+    <div class="page-head">
+      <div>
+        <div class="page-title">Customer Orders</div>
+        <div class="page-desc">Place new orders — one customer can order multiple diameters in a single order — and dispatch against available stock</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div class="card-title">New Order</div></div>
+      <div class="field" style="margin-bottom:14px;max-width:340px;">
+        <label>Customer Name</label><input id="f-customer" placeholder="e.g. Shree Balaji Constructions">
+      </div>
+
+      <label style="margin-bottom:8px;">Order Lines</label>
+      <div class="form-grid" style="margin-bottom:10px;">
+        <div class="field"><label>Diameter (mm)</label>
+          <select id="f-dia">${DIAMETERS.map(d=>`<option value="${d}">${d}mm</option>`).join('')}</select>
+        </div>
+        <div class="field"><label>Grade</label>
+          <select id="f-grade">${GRADES.map(g=>`<option value="${g}">${g}</option>`).join('')}</select>
+        </div>
+        <div class="field"><label>Quantity (MT)</label><input id="f-qty" type="number" min="0.1" step="0.1" placeholder="e.g. 10"></div>
+        <div class="field" style="display:flex;align-items:flex-end;"><button class="btn secondary" id="addLineBtn" style="width:100%;">+ Add Line</button></div>
+      </div>
+
+      ${orderCart.length>0 ? `
+      <table style="margin-bottom:14px;">
+        <thead><tr><th>Diameter</th><th>Grade</th><th>Qty</th><th></th></tr></thead>
+        <tbody>
+        ${orderCart.map((l,i)=>`
+          <tr>
+            <td>⌀${l.dia}mm</td><td>${l.grade}</td><td>${fmt(l.qty)} MT</td>
+            <td><button class="btn danger small" data-remove-line="${i}">Remove</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>` : `<div class="section-note" style="margin-bottom:14px;">No lines added yet — add at least one diameter/grade/quantity line, then place the order.</div>`}
+
+      <div style="display:flex;gap:10px;">
+        <button class="btn" id="placeOrderBtn">Place Order${orderCart.length>1?` (${orderCart.length} lines)`:''}</button>
+      </div>
+      <div class="section-note">Each line is checked against current stock automatically. If enough stock is on hand it's fulfilled instantly; if only some is available, that amount is allocated immediately and the line is marked "partial" with the rest left pending — first-come, first-served against available stock. Use "Try Fulfill" later to allocate more as stock comes in.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Upload Orders from Excel</div>
+      </div>
+      <div class="upload-row">
+        <div class="dropzone" id="orderDropzone">
+          <div><b>Click to choose a file</b> or drag an .xlsx / .xls / .csv here</div>
+          <div class="sub">Columns: Customer, Diameter, Grade, Quantity (MT), Date (optional). Rows with the same Customer + Date are grouped into one multi-line order.</div>
+        </div>
+        <button class="btn secondary small" id="downloadOrderTemplateBtn">Download Template</button>
+      </div>
+      <input type="file" id="orderFileInput" accept=".xlsx,.xls,.csv" style="display:none;">
+      <div id="orderUploadSummary"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">All Orders <span class="count">${orders.length} total</span></div>
+      </div>
+      ${orders.length===0 ? `<div class="empty">No orders yet.</div>` :
+      `<table>
+        <thead><tr><th>Order ID</th><th>Customer</th><th>Lines</th><th>Total Qty</th><th>Date</th><th>Status</th><th></th><th></th></tr></thead>
+        <tbody>
+        ${sorted.map(o=>{
+          const st = orderStatus(o);
+          return `
+          <tr>
+            <td>${o.id}</td>
+            <td class="name">${o.customer}</td>
+            <td>${o.items.map(it=>`⌀${it.dia}mm ${it.grade} — ${fmt(it.allocated||0)}/${fmt(it.qty)}MT ${it.status==='fulfilled'?'✓':it.status==='partial'?'◐':'…'}`).join('<br>')}</td>
+            <td>${fmt(orderTotalQty(o))} MT</td>
+            <td>${o.date}</td>
+            <td><span class="pill ${st}">${st}</span></td>
+            <td>${st!=='fulfilled' ? `<button class="btn secondary small" data-fulfill="${o.id}">Try Fulfill</button>` : ''}</td>
+            <td style="display:flex;gap:6px;"><button class="btn secondary small" data-edit-order="${o.id}">Edit</button><button class="btn danger small" data-delete-order="${o.id}">Delete</button></td>
+          </tr>`;}).join('')}
+        </tbody>
+      </table>`}
+    </div>
+  `;
+
+  document.getElementById('addLineBtn').addEventListener('click', addOrderLine);
+  document.querySelectorAll('[data-remove-line]').forEach(b=>{
+    b.addEventListener('click', ()=>{ orderCart.splice(Number(b.dataset.removeLine),1); renderOrders(); });
+  });
+  document.getElementById('placeOrderBtn').addEventListener('click', placeOrder);
+  document.querySelectorAll('[data-fulfill]').forEach(b=>{
+    b.addEventListener('click', ()=>tryFulfillOrder(b.dataset.fulfill));
+  });
+  document.querySelectorAll('[data-edit-order]').forEach(b=>{
+    b.addEventListener('click', ()=>openEditOrderModal(b.dataset.editOrder));
+  });
+  document.querySelectorAll('[data-delete-order]').forEach(b=>{
+    b.addEventListener('click', ()=>deleteOrder(b.dataset.deleteOrder));
+  });
+
+  const dz = document.getElementById('orderDropzone');
+  const fi = document.getElementById('orderFileInput');
+  dz.addEventListener('click', ()=>fi.click());
+  dz.addEventListener('dragover', e=>{ e.preventDefault(); dz.classList.add('drag'); });
+  dz.addEventListener('dragleave', ()=> dz.classList.remove('drag'));
+  dz.addEventListener('drop', e=>{
+    e.preventDefault(); dz.classList.remove('drag');
+    if(e.dataTransfer.files.length) handleOrderExcelFile(e.dataTransfer.files[0]);
+  });
+  fi.addEventListener('change', e=>{
+    if(e.target.files.length) handleOrderExcelFile(e.target.files[0]);
+    fi.value = '';
+  });
+  document.getElementById('downloadOrderTemplateBtn').addEventListener('click', downloadOrderTemplate);
+}
+
+function addOrderLine(){
+  const dia = Number(document.getElementById('f-dia').value);
+  const grade = document.getElementById('f-grade').value;
+  const qty = Number(document.getElementById('f-qty').value);
+  if(!qty || qty<=0){ toast('Enter a valid quantity before adding a line.'); return; }
+  orderCart.push({dia, grade, qty});
+  document.getElementById('f-qty').value = '';
+  renderOrders();
+}
+
+function fulfillItem(item){
+  const s = findStock(item.dia, item.grade);
+  if(!item.allocated) item.allocated = 0;
+  const remaining = item.qty - item.allocated;
+  if(remaining<=0){ item.status='fulfilled'; return false; }
+  if(!s || s.qty<=0) return false;
+  const take = Math.min(s.qty, remaining);
+  s.qty -= take;
+  item.allocated += take;
+  item.status = item.allocated >= item.qty ? 'fulfilled' : (item.allocated>0 ? 'partial' : 'pending');
+  return take>0;
+}
+
+function placeOrder(){
+  const customer = document.getElementById('f-customer').value.trim();
+  if(!customer){ toast('Enter a customer name.'); return; }
+  if(orderCart.length===0){ toast('Add at least one order line.'); return; }
+
+  const id = 'ORD-'+(orderSeq++);
+  const items = orderCart.map(l=>({dia:l.dia, grade:l.grade, qty:l.qty, allocated:0, status:'pending'}));
+  const order = {id, customer, date: new Date().toISOString().slice(0,10), items};
+  orders.push(order);
+
+  let fulfilledCount = 0;
+  items.forEach(it=>{ if(fulfillItem(it)) fulfilledCount++; });
+
+  orderCart = [];
+  const st = orderStatus(order);
+  toast(`${id} placed (${items.length} line${items.length===1?'':'s'}) — ${st==='fulfilled'?'fully fulfilled':st==='partial'?'partially fulfilled':'pending, insufficient stock'}.`);
+  render();
+}
+
+function tryFulfillOrder(id){
+  const o = orders.find(x=>x.id===id);
+  if(!o) return;
+  let changed = 0;
+  o.items.forEach(it=>{ if(it.status!=='fulfilled' && fulfillItem(it)) changed++; });
+  if(changed>0){ toast(`${id}: ${changed} line(s) fulfilled from stock.`); }
+  else { toast(`${id}: still short on stock for remaining line(s).`); }
+  render();
+}
+
+function deleteOrder(id){
+  const o = orders.find(x=>x.id===id);
+  if(!o) return;
+  if(!confirm(`Delete order ${id} for ${o.customer}? Any allocated stock (fulfilled or partially fulfilled lines) will be returned to inventory.`)) return;
+  o.items.forEach(it=>{
+    const allocated = it.allocated||0;
+    if(allocated>0){
+      const s = findStock(it.dia, it.grade);
+      if(s) s.qty += allocated;
+    }
+  });
+  orders = orders.filter(x=>x.id!==id);
+  toast(`${id} deleted and any allocated stock restored.`);
+  render();
+}
+
+function openEditOrderModal(id){
+  const o = orders.find(x=>x.id===id);
+  if(!o) return;
+  editOrderDraft = JSON.parse(JSON.stringify(o.items));
+  renderEditOrderModal(id);
+}
+
+function renderEditOrderModal(id){
+  const o = orders.find(x=>x.id===id);
+  if(!o) return;
+  const box = document.getElementById('modalBox');
+  box.innerHTML = `
+    <div class="modal-title">Edit Order ${id}</div>
+    <div class="field" style="margin-bottom:16px;">
+      <label>Customer Name</label><input id="e-o-customer" value="${o.customer.replace(/"/g,'&quot;')}">
+    </div>
+    <label style="margin-bottom:8px;">Order Lines</label>
+    <table style="margin-bottom:10px;">
+      <thead><tr><th>Diameter</th><th>Grade</th><th>Qty (MT)</th><th></th></tr></thead>
+      <tbody>
+      ${editOrderDraft.map((l,i)=>`
+        <tr>
+          <td><select data-edit-line-dia="${i}">${DIAMETERS.map(d=>`<option value="${d}" ${d===l.dia?'selected':''}>${d}mm</option>`).join('')}</select></td>
+          <td><select data-edit-line-grade="${i}">${GRADES.map(g=>`<option value="${g}" ${g===l.grade?'selected':''}>${g}</option>`).join('')}</select></td>
+          <td><input type="number" min="0.1" step="0.1" value="${l.qty}" data-edit-line-qty="${i}" style="width:84px;"></td>
+          <td><button class="btn danger tiny" data-edit-remove-line="${i}">Remove</button></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    <button class="btn secondary small" id="editAddLineBtn">+ Add Line</button>
+    <div class="section-note">Saving re-checks every line against current stock: allocated stock is first returned to inventory, then each line is re-fulfilled as far as stock allows. Use "Try Fulfill" afterward if any line is left pending.</div>
+    <div class="modal-actions">
+      <button class="btn secondary" id="modalCancelBtn">Cancel</button>
+      <button class="btn" id="modalSaveBtn">Save Changes</button>
+    </div>
+  `;
+  document.getElementById('modalCancelBtn').addEventListener('click', closeModal);
+  document.getElementById('modalSaveBtn').addEventListener('click', ()=>saveEditOrder(id));
+  document.getElementById('editAddLineBtn').addEventListener('click', ()=>{
+    syncEditOrderDraftFromForm();
+    editOrderDraft.push({dia:DIAMETERS[0], grade:GRADES[0], qty:1, allocated:0, status:'pending'});
+    renderEditOrderModal(id);
+  });
+  document.querySelectorAll('[data-edit-remove-line]').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      syncEditOrderDraftFromForm();
+      editOrderDraft.splice(Number(b.dataset.editRemoveLine),1);
+      renderEditOrderModal(id);
+    });
+  });
+  showModal();
+}
+
+function syncEditOrderDraftFromForm(){
+  editOrderDraft.forEach((l,i)=>{
+    const diaEl = document.querySelector(`[data-edit-line-dia="${i}"]`);
+    const gradeEl = document.querySelector(`[data-edit-line-grade="${i}"]`);
+    const qtyEl = document.querySelector(`[data-edit-line-qty="${i}"]`);
+    if(diaEl) l.dia = Number(diaEl.value);
+    if(gradeEl) l.grade = gradeEl.value;
+    if(qtyEl) l.qty = Number(qtyEl.value);
+  });
+}
+
+function saveEditOrder(id){
+  const o = orders.find(x=>x.id===id);
+  if(!o) return;
+  syncEditOrderDraftFromForm();
+  const customer = document.getElementById('e-o-customer').value.trim();
+  if(!customer){ toast('Enter a customer name.'); return; }
+  if(editOrderDraft.length===0){ toast('Order must have at least one line — add a line or delete the order instead.'); return; }
+  for(const l of editOrderDraft){
+    if(!l.qty || l.qty<=0){ toast('Every line needs a quantity greater than 0.'); return; }
+  }
+  // return all currently allocated stock from the old version of this order
+  o.items.forEach(it=>{
+    const allocated = it.allocated||0;
+    if(allocated>0){
+      const s = findStock(it.dia, it.grade);
+      if(s) s.qty += allocated;
+    }
+  });
+  // rebuild items from the edited draft and re-fulfill fresh against current stock
+  o.items = editOrderDraft.map(l=>({dia:l.dia, grade:l.grade, qty:l.qty, allocated:0, status:'pending'}));
+  o.customer = customer;
+  o.items.forEach(it=>fulfillItem(it));
+  closeModal();
+  toast(`${id} updated.`);
+  render();
+}
+
+/* ============== ORDER EXCEL UPLOAD ============== */
+function handleOrderExcelFile(file){
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type:'array'});
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, {defval:''});
+      processUploadedOrderRows(rows, file.name);
+    }catch(err){
+      showOrderUploadSummary({ordersCreated:0, linesAdded:0, errors:[`Could not read "${file.name}": ${err.message}`]});
+    }
+  };
+  reader.onerror = function(){
+    showOrderUploadSummary({ordersCreated:0, linesAdded:0, errors:[`Failed to load "${file.name}".`]});
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function processUploadedOrderRows(rows, filename){
+  const errors = [];
+  const groups = {}; // key: customer||date -> {customer, date, items:[]}
+
+  rows.forEach((row, idx)=>{
+    const rowNum = idx+2;
+    const customerRaw = pickValue(row, ['customer','customername','client']);
+    const diaRaw = pickValue(row, ['diameter','dia','size','diametermm']);
+    const gradeRaw = pickValue(row, ['grade','steelgrade']);
+    const qtyRaw = pickValue(row, ['quantity','qty','quantitymt']);
+    const dateRaw = pickValue(row, ['date','orderdate']);
+
+    if(customerRaw===undefined || diaRaw===undefined || gradeRaw===undefined || qtyRaw===undefined){
+      errors.push(`Row ${rowNum}: missing Customer, Diameter, Grade, or Quantity — skipped.`);
+      return;
+    }
+    const dia = parseInt(String(diaRaw).replace(/[^0-9.]/g,''), 10);
+    const grade = String(gradeRaw).trim();
+    const qty = parseFloat(qtyRaw);
+    const customer = String(customerRaw).trim();
+    let date = dateRaw ? String(dateRaw).trim() : new Date().toISOString().slice(0,10);
+    if(date.length===10 && date.includes('/')) {
+      // try normalize dd/mm/yyyy style, fallback to original string if odd
+      const parts = date.split('/');
+      if(parts.length===3) date = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+    }
+
+    if(!dia || isNaN(qty) || !customer){
+      errors.push(`Row ${rowNum}: invalid customer, diameter, or quantity — skipped.`);
+      return;
+    }
+
+    const key = customer+'||'+date;
+    if(!groups[key]) groups[key] = {customer, date, items:[]};
+    groups[key].items.push({dia, grade, qty, allocated:0, status:'pending'});
+  });
+
+  let ordersCreated = 0, linesAdded = 0;
+  Object.values(groups).forEach(g=>{
+    const id = 'ORD-'+(orderSeq++);
+    g.items.forEach(it=>fulfillItem(it));
+    orders.push({id, customer:g.customer, date:g.date, items:g.items});
+    ordersCreated++;
+    linesAdded += g.items.length;
+  });
+
+  showOrderUploadSummary({ordersCreated, linesAdded, errors, filename});
+  render();
+}
+
+function showOrderUploadSummary({ordersCreated, linesAdded, errors, filename}){
+  const box = document.getElementById('orderUploadSummary');
+  if(!box){ toast(`Order upload processed: ${ordersCreated} orders, ${linesAdded} lines.`); return; }
+  let html = `<div class="upload-summary">`;
+  if(filename) html += `Processed <b style="color:var(--text)">${filename}</b><br>`;
+  html += `<span class="new">${ordersCreated} order(s) created</span> · <span class="upd">${linesAdded} line(s) added</span>`;
+  if(errors.length){
+    html += `<br><span class="err">${errors.length} row(s) skipped:</span><br>` + errors.slice(0,6).map(e=>`&nbsp;&nbsp;${e}`).join('<br>');
+    if(errors.length>6) html += `<br>&nbsp;&nbsp;...and ${errors.length-6} more.`;
+  }
+  html += `</div>`;
+  box.innerHTML = html;
+  toast(`Order file processed: ${ordersCreated} orders, ${linesAdded} lines.`);
+}
+
+function downloadOrderTemplate(){
+  const ws = XLSX.utils.json_to_sheet([
+    {Customer:'Shree Balaji Constructions', Diameter:12, Grade:'SS-500', Quantity:20, Date:'2026-06-30'},
+    {Customer:'Shree Balaji Constructions', Diameter:16, Grade:'SS-600', Quantity:5, Date:'2026-06-30'},
+    {Customer:'Vihaan Infra Pvt Ltd', Diameter:25, Grade:'SS-500', Quantity:18, Date:'2026-06-30'},
+  ]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Orders');
+  XLSX.writeFile(wb, 'orders-upload-template.xlsx');
+}
+
+/* ============== RENDER: STOCK YARD ============== */
+function renderStock(){
+  const sorted = [...stock].sort((a,b)=> a.dia-b.dia || a.grade.localeCompare(b.grade));
+  document.getElementById('main').innerHTML = `
+    <div class="page-head">
+      <div>
+        <div class="page-title">Stock Yard</div>
+        <div class="page-desc">Current inventory by diameter and grade. Receive new stock from the mill below.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Upload Stock from Excel</div>
+      </div>
+      <div class="upload-row">
+        <div class="dropzone" id="dropzone">
+          <div><b>Click to choose a file</b> or drag an .xlsx / .xls / .csv here</div>
+          <div class="sub">Columns: Diameter, Grade, Quantity (MT), Reorder Level, Capacity — header names flexible, see template below</div>
+        </div>
+        <button class="btn secondary small" id="downloadTemplateBtn">Download Template</button>
+      </div>
+      <div class="upload-mode" style="margin-top:12px;">
+        <label style="margin-bottom:6px;">On Upload</label>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;">
+          <label class="radio-opt"><input type="radio" name="stockUploadMode" value="add" checked> Add new / update matching lines</label>
+          <label class="radio-opt"><input type="radio" name="stockUploadMode" value="replace"> Replace entire inventory with file</label>
+        </div>
+      </div>
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none;">
+      <div id="uploadSummary"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div class="card-title">Receive Stock (Mill Output)</div></div>
+      <div class="form-grid">
+        <div class="field"><label>Diameter (mm)</label>
+          <select id="s-dia">${DIAMETERS.map(d=>`<option value="${d}">${d}mm</option>`).join('')}</select>
+        </div>
+        <div class="field"><label>Grade</label>
+          <select id="s-grade">${GRADES.map(g=>`<option value="${g}">${g}</option>`).join('')}</select>
+        </div>
+        <div class="field"><label>Quantity Received (MT)</label><input id="s-qty" type="number" min="0.1" step="0.1" placeholder="e.g. 15"></div>
+        <div class="field" style="display:flex;align-items:flex-end;"><button class="btn" id="receiveBtn" style="width:100%;">Add to Stock</button></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Inventory by Line <span class="count">${stock.length} lines</span></div>
+        ${stock.length>0 ? `<button class="btn danger small" id="deleteAllStockBtn">Delete All Inventory</button>` : ''}
+      </div>
+      <table>
+        <thead><tr><th>Diameter</th><th>Grade</th><th>In Stock</th><th>Reorder Level</th><th>Fill</th><th>Pending Demand</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+        ${sorted.map(s=>{
+          const status = stockStatus(s);
+          const pct = Math.min(100, Math.round((s.qty/s.capacity)*100));
+          const color = status==='ok' ? 'var(--success)' : status==='low' ? 'var(--amber)' : 'var(--danger)';
+          const demand = pendingDemandFor(s.dia,s.grade);
+          return `<tr>
+            <td class="name">⌀${s.dia}mm</td>
+            <td>${s.grade}</td>
+            <td>${fmt(s.qty)} MT</td>
+            <td>${fmt(s.reorder)} MT</td>
+            <td>
+              <div class="gauge-wrap">
+                <div class="gauge"><div class="gauge-fill" style="width:${pct}%;background:${color};"></div></div>
+                <div class="gauge-pct">${pct}%</div>
+              </div>
+            </td>
+            <td>${demand>0 ? fmt(demand)+' MT' : '—'}</td>
+            <td><span class="pill ${status}">${status==='ok'?'Healthy':status==='low'?'Low':'Critical'}</span></td>
+            <td style="display:flex;gap:6px;"><button class="btn secondary small" data-edit-stock="${s.dia}|${s.grade}">Edit</button><button class="btn danger small" data-delete-stock="${s.dia}|${s.grade}">Delete</button></td>
+          </tr>`;
+        }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+  document.getElementById('receiveBtn').addEventListener('click', receiveStock);
+  document.querySelectorAll('[data-edit-stock]').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const [dia,grade] = b.dataset.editStock.split('|');
+      openEditStockModal(Number(dia), grade);
+    });
+  });
+  document.querySelectorAll('[data-delete-stock]').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const [dia,grade] = b.dataset.deleteStock.split('|');
+      deleteStockLine(Number(dia), grade);
+    });
+  });
+  const deleteAllBtn = document.getElementById('deleteAllStockBtn');
+  if(deleteAllBtn) deleteAllBtn.addEventListener('click', deleteAllStock);
+
+  const dz = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  dz.addEventListener('click', ()=>fileInput.click());
+  dz.addEventListener('dragover', e=>{ e.preventDefault(); dz.classList.add('drag'); });
+  dz.addEventListener('dragleave', ()=> dz.classList.remove('drag'));
+  dz.addEventListener('drop', e=>{
+    e.preventDefault(); dz.classList.remove('drag');
+    if(e.dataTransfer.files.length) handleExcelFile(e.dataTransfer.files[0], getStockUploadMode());
+  });
+  fileInput.addEventListener('change', e=>{
+    if(e.target.files.length) handleExcelFile(e.target.files[0], getStockUploadMode());
+    fileInput.value = '';
+  });
+  document.getElementById('downloadTemplateBtn').addEventListener('click', downloadTemplate);
+}
+
+function getStockUploadMode(){
+  const checked = document.querySelector('input[name="stockUploadMode"]:checked');
+  return checked ? checked.value : 'add';
+}
+
+function deleteAllStock(){
+  if(stock.length===0) return;
+  if(!confirm(`Delete ALL ${stock.length} inventory line(s)? This cannot be undone.`)) return;
+  stock = [];
+  toast('All inventory lines deleted.');
+  render();
+}
+
+/* ============== EXCEL UPLOAD ============== */
+function normalizeKey(k){
+  return String(k).toLowerCase().replace(/[^a-z0-9]/g,'');
+}
+function pickValue(row, candidates){
+  const map = {};
+  Object.keys(row).forEach(k=> map[normalizeKey(k)] = row[k]);
+  for(const c of candidates){
+    if(map[normalizeKey(c)] !== undefined && map[normalizeKey(c)] !== '') return map[normalizeKey(c)];
+  }
+  return undefined;
+}
+
+function handleExcelFile(file, mode){
+  mode = mode || 'add';
+  if(mode==='replace' && stock.length>0){
+    if(!confirm(`Replace ALL ${stock.length} existing inventory line(s) with the contents of "${file.name}"? This cannot be undone.`)) return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type:'array'});
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, {defval:''});
+      processUploadedRows(rows, file.name, mode);
+    }catch(err){
+      showUploadSummary({added:0, updated:0, errors:[`Could not read "${file.name}": ${err.message}`]});
+    }
+  };
+  reader.onerror = function(){
+    showUploadSummary({added:0, updated:0, errors:[`Failed to load "${file.name}".`]});
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function processUploadedRows(rows, filename, mode){
+  mode = mode || 'add';
+  let added = 0, updated = 0;
+  const errors = [];
+  const removedCount = (mode==='replace') ? stock.length : 0;
+  if(mode==='replace') stock = [];
+
+  rows.forEach((row, idx)=>{
+    const rowNum = idx+2; // account for header row
+    const diaRaw = pickValue(row, ['diameter','dia','size','diametermm']);
+    const gradeRaw = pickValue(row, ['grade','steelgrade']);
+    const qtyRaw = pickValue(row, ['quantity','qty','quantitymt','stock','currentstock']);
+    const reorderRaw = pickValue(row, ['reorderlevel','reorder','reorderqty','minlevel']);
+    const capacityRaw = pickValue(row, ['capacity','yardcapacity','maxcapacity']);
+
+    if(diaRaw===undefined || gradeRaw===undefined || qtyRaw===undefined){
+      errors.push(`Row ${rowNum}: missing Diameter, Grade, or Quantity — skipped.`);
+      return;
+    }
+
+    const dia = parseInt(String(diaRaw).replace(/[^0-9.]/g,''), 10);
+    const grade = String(gradeRaw).trim();
+    const qty = parseFloat(qtyRaw);
+
+    if(!dia || isNaN(qty)){
+      errors.push(`Row ${rowNum}: invalid diameter or quantity — skipped.`);
+      return;
+    }
+
+    let s = findStock(dia, grade);
+    if(s){
+      s.qty = qty;
+      if(reorderRaw!==undefined && !isNaN(parseFloat(reorderRaw))) s.reorder = parseFloat(reorderRaw);
+      if(capacityRaw!==undefined && !isNaN(parseFloat(capacityRaw))) s.capacity = parseFloat(capacityRaw);
+      updated++;
+    } else {
+      s = {
+        dia, grade, qty,
+        reorder: (reorderRaw!==undefined && !isNaN(parseFloat(reorderRaw))) ? parseFloat(reorderRaw) : Math.round(qty*0.6),
+        capacity: (capacityRaw!==undefined && !isNaN(parseFloat(capacityRaw))) ? parseFloat(capacityRaw) : Math.round(qty*2.5) || 40,
+      };
+      stock.push(s);
+      added++;
+    }
+  });
+
+  showUploadSummary({added, updated, errors, filename, mode, removedCount});
+  render();
+}
+
+function showUploadSummary({added, updated, errors, filename, mode, removedCount}){
+  const box = document.getElementById('uploadSummary');
+  const replaced = mode==='replace';
+  if(!box) { toast(`Upload processed: ${added} added, ${updated} updated.`); return; }
+  let html = `<div class="upload-summary">`;
+  if(filename) html += `Processed <b style="color:var(--text)">${filename}</b>${replaced ? ' (replaced entire inventory)' : ''}<br>`;
+  if(replaced) html += `<span class="err">${removedCount} prior line(s) cleared</span> · `;
+  html += `<span class="new">${added} line(s) added</span> · <span class="upd">${updated} line(s) updated</span>`;
+  if(errors.length){
+    html += `<br><span class="err">${errors.length} row(s) skipped:</span><br>` + errors.slice(0,6).map(e=>`&nbsp;&nbsp;${e}`).join('<br>');
+    if(errors.length>6) html += `<br>&nbsp;&nbsp;...and ${errors.length-6} more.`;
+  }
+  html += `</div>`;
+  box.innerHTML = html;
+  toast(replaced ? `Inventory replaced: ${added} line(s) loaded from file.` : `Stock file processed: ${added} added, ${updated} updated.`);
+}
+
+function downloadTemplate(){
+  const ws = XLSX.utils.json_to_sheet([
+    {Diameter:8, Grade:'SS-500', Quantity:25.5, 'Reorder Level':25, Capacity:60},
+    {Diameter:12, Grade:'SS-600', Quantity:14, 'Reorder Level':20, Capacity:50},
+  ]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Stock');
+  XLSX.writeFile(wb, 'stock-upload-template.xlsx');
+}
+
+function receiveStock(){
+  const dia = Number(document.getElementById('s-dia').value);
+  const grade = document.getElementById('s-grade').value;
+  const qty = Number(document.getElementById('s-qty').value);
+  if(!qty || qty<=0){ toast('Enter a valid quantity.'); return; }
+
+  let s = findStock(dia,grade);
+  if(!s){
+    s = {dia, grade, qty:0, reorder:20, capacity:50};
+    stock.push(s);
+  }
+  s.qty += qty;
+  toast(`Added ${fmt(qty)} MT to ⌀${dia}mm ${grade} stock.`);
+  render();
+}
+
+function deleteStockLine(dia, grade){
+  const s = findStock(dia, grade);
+  if(!s) return;
+  const demand = pendingDemandFor(dia, grade);
+  const warn = demand>0 ? ` There is ${fmt(demand)} MT of unfulfilled order demand for this line.` : '';
+  if(!confirm(`Delete ⌀${dia}mm ${grade} stock line (${fmt(s.qty)} MT)?${warn}`)) return;
+  stock = stock.filter(x=>!(x.dia===dia && x.grade===grade));
+  toast(`⌀${dia}mm ${grade} stock line deleted.`);
+  render();
+}
+
+function openEditStockModal(dia, grade){
+  const s = findStock(dia, grade);
+  if(!s) return;
+  const box = document.getElementById('modalBox');
+  box.innerHTML = `
+    <div class="modal-title">Edit Stock Line</div>
+    <div class="form-grid" style="grid-template-columns:repeat(2,1fr);">
+      <div class="field"><label>Diameter (mm)</label>
+        <select id="e-s-dia">${DIAMETERS.map(d=>`<option value="${d}" ${d===s.dia?'selected':''}>${d}mm</option>`).join('')}</select>
+      </div>
+      <div class="field"><label>Grade</label>
+        <select id="e-s-grade">${GRADES.map(g=>`<option value="${g}" ${g===s.grade?'selected':''}>${g}</option>`).join('')}</select>
+      </div>
+      <div class="field"><label>Quantity (MT)</label><input id="e-s-qty" type="number" min="0" step="0.1" value="${s.qty}"></div>
+      <div class="field"><label>Reorder Level (MT)</label><input id="e-s-reorder" type="number" min="0" step="0.1" value="${s.reorder}"></div>
+      <div class="field"><label>Capacity (MT)</label><input id="e-s-capacity" type="number" min="0.1" step="0.1" value="${s.capacity}"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn secondary" id="modalCancelBtn">Cancel</button>
+      <button class="btn" id="modalSaveBtn">Save Changes</button>
+    </div>
+  `;
+  document.getElementById('modalCancelBtn').addEventListener('click', closeModal);
+  document.getElementById('modalSaveBtn').addEventListener('click', ()=>saveEditStock(dia, grade));
+  showModal();
+}
+
+function saveEditStock(origDia, origGrade){
+  const dia = Number(document.getElementById('e-s-dia').value);
+  const grade = document.getElementById('e-s-grade').value;
+  const qty = Number(document.getElementById('e-s-qty').value);
+  const reorder = Number(document.getElementById('e-s-reorder').value);
+  const capacity = Number(document.getElementById('e-s-capacity').value);
+  if(isNaN(qty) || qty<0 || isNaN(reorder) || reorder<0 || isNaN(capacity) || capacity<=0){
+    toast('Enter valid numbers for quantity, reorder level and capacity.');
+    return;
+  }
+  const collision = findStock(dia, grade);
+  if(collision && !(dia===origDia && grade===origGrade)){
+    toast(`A stock line for ⌀${dia}mm ${grade} already exists — delete or merge it first.`);
+    return;
+  }
+  const s = findStock(origDia, origGrade);
+  s.dia = dia; s.grade = grade; s.qty = qty; s.reorder = reorder; s.capacity = capacity;
+  closeModal();
+  toast(`⌀${dia}mm ${grade} stock line updated.`);
+  render();
+}
+
+/* ============== RENDER: MANUFACTURING PLAN ============== */
+function renderManufacture(){
+  const needs = manufacturingNeeds();
+  const enriched = needs.map(s=>{
+    const demand = pendingDemandFor(s.dia,s.grade);
+    const recommend = Math.max(0, s.reorder + demand - s.qty);
+    return {...s, demand, recommend};
+  });
+  const totalRecommend = enriched.reduce((a,s)=>a+s.recommend,0);
+
+  document.getElementById('main').innerHTML = `
+    <div class="page-head">
+      <div>
+        <div class="page-title">Manufacturing Plan</div>
+        <div class="page-desc">Diameters that have fallen below reorder level, ranked by what the mill should roll next</div>
+      </div>
+    </div>
+
+    <div class="stats" style="grid-template-columns:repeat(3,1fr);">
+      <div class="stat" style="--bar:var(--danger)">
+        <div class="label">Lines Needing Production</div>
+        <div class="value">${enriched.length}</div>
+        <div class="sub">out of ${stock.length} total lines</div>
+      </div>
+      <div class="stat" style="--bar:var(--amber)">
+        <div class="label">Recommended Roll Quantity</div>
+        <div class="value">${fmt(totalRecommend)} MT</div>
+        <div class="sub">covers reorder buffer + open orders</div>
+      </div>
+      <div class="stat" style="--bar:var(--accent)">
+        <div class="label">Open Order Demand</div>
+        <div class="value">${fmt(orders.reduce((a,o)=>a+o.items.filter(it=>it.status!=='fulfilled').reduce((s,it)=>s+(it.qty-(it.allocated||0)),0),0))} MT</div>
+        <div class="sub">across pending orders</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Production Priority Queue</div>
+      </div>
+      ${enriched.length===0 ? `<div class="empty">Every diameter and grade is at or above its reorder level. <b>Mill is idle on rebar — no urgent rolling needed.</b></div>` :
+      `<table>
+        <thead><tr><th>Priority</th><th>Diameter</th><th>Grade</th><th>Current Stock</th><th>Reorder Level</th><th>Pending Orders</th><th>Recommended to Roll</th></tr></thead>
+        <tbody>
+        ${enriched.map((s,i)=>`
+          <tr>
+            <td>${i+1}</td>
+            <td class="name">⌀${s.dia}mm</td>
+            <td>${s.grade}</td>
+            <td>${fmt(s.qty)} MT</td>
+            <td>${fmt(s.reorder)} MT</td>
+            <td>${s.demand>0 ? fmt(s.demand)+' MT' : '—'}</td>
+            <td><span class="pill ${i===0?'crit':'low'}">${fmt(s.recommend)} MT</span></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`}
+      <div class="section-note">Recommended quantity = max(reorder shortfall, unfulfilled order demand minus current stock). Adjust reorder levels in code to match real safety-stock policy.</div>
+    </div>
+  `;
+}
+
+/* ============== ROUTER ============== */
+function render(){
+  saveData();
+  renderNav();
+  if(activeTab==='dashboard') renderDashboard();
+  else if(activeTab==='orders') renderOrders();
+  else if(activeTab==='stock') renderStock();
+  else if(activeTab==='manufacture') renderManufacture();
+}
+
+render();
+</script>
+</body>
+</html>
